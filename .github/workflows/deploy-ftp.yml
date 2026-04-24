@@ -1,0 +1,40 @@
+# Push to `main` → files sync to your hosting (FTP/FTPS).
+# Setup: GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
+#   FTP_HOST       — e.g. ftp.yourdomain.am
+#   FTP_USERNAME
+#   FTP_PASSWORD
+# Optional: Settings → Environments (or edit server-dir below if your path is not default).
+# If your control panel already opens you in the site root, server-dir: ./ is fine.
+# For SFTP-only hosts, this action may not apply — use a different action or a VPS with git pull.
+
+name: Deploy site (FTP)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync to hosting (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          # Change if your provider uses e.g. public_html, httpdocs, www
+          server-dir: ./
+          exclude: |
+            **/.github/**
+            **/.git*
+            .gitignore
