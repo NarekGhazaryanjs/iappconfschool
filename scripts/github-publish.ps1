@@ -34,5 +34,7 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-$url = & $gh repo view --json url -q 2>$null
-if ($url) { Write-Host "Repository: $url" -ForegroundColor Green }
+try {
+  $j = & $gh repo view --json url 2>$null | ConvertFrom-Json
+  if ($j.url) { Write-Host "Repository: $($j.url)" -ForegroundColor Green }
+} catch { }
