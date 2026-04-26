@@ -82,8 +82,8 @@ jobs:
             echo "dir=$D" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # cPanel: /home/USER/opticssymposia.iapp.am — same style as iapp deploy uses /public_html/
-          D="/opticssymposia.iapp.am/"
+          # cPanel docroot folder name (no leading slash; same if secret FTP_TARGET_DIR empty)
+          D="opticssymposia.iapp.am/"
           echo "Default: $D"
           echo "dir=$D" >> "$GITHUB_OUTPUT"
 
