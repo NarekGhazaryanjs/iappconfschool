@@ -74,3 +74,21 @@ jobs:
             .gitignore
             README.md
             scripts/**
+
+      - name: Wait then verify live matches repo (no N2G in HTML)
+        continue-on-error: true
+        run: |
+          set -e
+          URL="https://opticssymposia.iapp.am/registration.html"
+          for i in 1 2 3 4 5 6; do
+            if [ "$i" != 1 ]; then sleep 20; fi
+            echo "Check attempt $i: $URL"
+            curl -fsS --max-time 45 "$URL" -o /tmp/registration.html
+            if ! grep -qE 'N2G|Brains LLC' /tmp/registration.html; then
+              echo "OK: live has no N2G line in served HTML (deploy path is correct)."
+              exit 0
+            fi
+            echo "Still seeing N2G in live HTML (wrong FTP path or cache)."
+          done
+          echo "::warning::LIVE still contains N2G while repo does not. Set GitHub secret FTP_TARGET_DIR to cPanel document root for opticssymposia.iapp.am (e.g. opticssymposia.iapp.am/ ). Or delete the line in File Manager in all .html for this site."
+          exit 1

@@ -147,4 +147,6 @@
       setNavMenuOpen(false);
     }
   });
+
+  document.querySelectorAll(".footer-credit").forEach(function (n) { n.remove(); });
 })();

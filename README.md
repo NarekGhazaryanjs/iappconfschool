@@ -15,6 +15,6 @@
 
 2. **Երբ `FTP_TARGET_DIR`-ը սխալ ա** (օր. այլ folder, առանց `.iapp.am`), GitHub-ից ֆայլերը **ուժի folder** են գնում — կայքը **քո URL-ում** չի փոխվում, թեև push-ը կանաչ է։
 
-3. **Workflow**․ `main` branch-ին **push** → **CI** → **FTP deploy**․ Ստուգի [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions) — **CD** job-ը կանաչ է, եթի path-ը ճիշտ ա։
+3. **Workflow**․ `main` **push** → **CI** → **FTP** → **Verify live** (live `registration.html`-ում N2G չլինի). [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions). Եթի **Verify**-ը **կարմիր** ա` `FTP_TARGET_DIR` path-ը չէ` File Manager-ի `opticssymposia.iapp.am` folder-ին։
 
 4. **Ձեռքով zip** (եթի հանկարծ FTP չես ուզում)․ `.\scripts\zip-site.ps1` → upload cPanel **File Manager** → `opticssymposia.iapp.am` document root։
