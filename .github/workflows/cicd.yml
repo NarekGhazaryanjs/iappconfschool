@@ -39,12 +39,10 @@ jobs:
           test -f downloads/1st-announcement.pdf
           echo "All required site files present."
 
-  # CD temporarily off: set `if:` below to `true` when deploying to reg.am again.
   deploy:
     name: CD — FTP to opticssymposia (subdomain root)
     needs: [ ci ]
-    if: false
-    # if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

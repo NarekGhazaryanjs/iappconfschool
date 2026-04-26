@@ -1,6 +1,6 @@
 # iappconfschool (OPTICS-15 / ASRP-BRIA 2026)
 
-Ստատիկ կայք — GitHub Actions-ով **CI** (ֆայլերի ստուգում)։ **FTP deploy-ը հանված ա** (`.github/workflows/cicd.yml` → `deploy` job-ի `if: false`)․ նորից միացնելու համար դարձրու `if: true` կամ վերականգնիր comment-ացված `if:` պայմանը։ Deploy-ի ժամանակ **`FTP_TARGET_DIR`**-ը **պետք ա համընկնի** cPanel → **Domains** *կորենի* հետ (օր. **`opticssymposia.am/`**)։
+Ստատիկ կայք — GitHub Actions․ `main` **push** կամ **Run workflow**․ **CI** + **FTP deploy** cPanel-ի `opticssymposia.am` document root, եթի GitHub **Secrets**-ը լրացված են (`FTP_TARGET_DIR` օր. **`opticssymposia.am/`**)։
 
 ## Քո մոտ աշխատանք (ամեն օր)
 
@@ -12,7 +12,7 @@ git commit -m "համառոտ նկարագիր"
 git push origin main
 ```
 
-`push`-ից հետո․ [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions) — **Միայն CI** (ստուգում)․ **FTP-ով սերվեր չի թարմացվի**, մինչեւ `deploy` job-ը չմիացնես։
+`push`-ից հետո․ [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions) — **CI + CD (FTP sync)**։
 
 ## Մեկ անգամյա (եթի դեղ չի արվել)
 
