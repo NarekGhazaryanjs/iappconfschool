@@ -55,9 +55,9 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          # FTP_TARGET_DIR = path from account home (e.g. opticssymposia.am/ or
-          # public_html/sub/NAME/ or NAME.iapp.am/). Trailing / required. Must match
-          # cPanel → Domains → that site's "document root" as seen in File Manager.
+          # Production URL: https://opticssymposia.iapp.am/ — set secret FTP_TARGET_DIR
+          # to cPanel document root, e.g. opticssymposia.iapp.am/ or public_html/sub/opticssymposia/
+          # (must match Domains + File Manager). Trailing / required.
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           security: strict
           log-level: verbose
