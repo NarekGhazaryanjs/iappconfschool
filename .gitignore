@@ -3,6 +3,9 @@
 Thumbs.db
 desktop.ini
 
+# Build output
+opticssymposia-site.zip
+
 # IDE
 .cursor/
 .vscode/
