@@ -1,5 +1,4 @@
-# iapp main site uses /home/USER/public_html/. Subdomain docroot is often /home/USER/public_html/opticssymposia.iapp.am/ (default below).
-# Set repo Variable USE_HOME_SUBDOMAIN=true for /home/USER/opticssymposia.iapp.am/ only. CPANEL_LINUX_USER if not iappamfk.
+# CPANEL_FTP_DIR_MODE: domains (default) | home | public_html — cPanel "Document root" for the subdomain. CPANEL_LINUX_USER if not iappamfk.
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -42,8 +41,6 @@ jobs:
             exit 1
           fi
 
-      # cPanel: subdomain vhost is often *under* public_html, not a sibling of public_html.
-      # Secret FTP_TARGET_DIR overrides. Repo Variable USE_HOME_SUBDOMAIN=true uses ~/opticssymposia.iapp.am/ instead.
       - name: Resolve server-dir
         id: p
         env:
@@ -52,18 +49,22 @@ jobs:
           set -e
           U='${{ vars.CPANEL_LINUX_USER }}'
           if [ -z "$U" ]; then U="iappamfk"; fi
-          HOME_MODE='${{ vars.USE_HOME_SUBDOMAIN }}'
+          MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
+          if [ -z "$MODE" ]; then MODE="domains"; fi
           if [ -n "$T" ]; then
             D="$T"
             if ! echo "$D" | grep -qE '^/home/'; then
               D="/home/${U}/$(echo "$D" | sed 's:^/*::')"
             fi
           else
-            if [ "$HOME_MODE" = "true" ] || [ "$HOME_MODE" = "1" ] || [ "$HOME_MODE" = "yes" ]; then
-              D="/home/${U}/opticssymposia.iapp.am/"
-            else
-              D="/home/${U}/public_html/opticssymposia.iapp.am/"
-            fi
+            case "$MODE" in
+              home)
+                D="/home/${U}/opticssymposia.iapp.am/" ;;
+              public_html)
+                D="/home/${U}/public_html/opticssymposia.iapp.am/" ;;
+              domains|*)
+                D="/home/${U}/domains/opticssymposia.iapp.am/public_html/" ;;
+            esac
           fi
           case "$D" in
             */) ;;
@@ -107,7 +108,7 @@ jobs:
             if n2g "https://opticssymposia.iapp.am/invited-speakers.html" || n2g "https://opticssymposia.iapp.am/program.html"; then
               echo "try $i/6: N2G still in invited or program (wrong FTP path?)"
               if [ "$i" -eq 6 ]; then
-                echo "::error::Set repo Variable USE_HOME_SUBDOMAIN=true or secret FTP_TARGET_DIR=full path from cPanel Subdomains → Document Root. Default is public_html/opticssymposia.iapp.am/."
+                echo "::error::Set secret FTP_TARGET_DIR to exact Document Root from cPanel (Subdomains). Or try repo Variable CPANEL_FTP_DIR_MODE=home or public_html (default is domains)."
                 exit 1
               fi
               sleep 25
