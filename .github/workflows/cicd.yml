@@ -1,5 +1,5 @@
-# Same FTP account as iapp. Successful iapp run used server-dir: /home/iappamfk/public_html/ (see iapp _run_*.log).
-# Subdomain document root: /home/iappamfk/opticssymposia.iapp.am/
+# Same FTP account as iapp. Successful iapp run: server-dir /home/iappamfk/public_html/ (see Desktop/iapp/_run_*.log).
+# This site: /home/<CPANEL_LINUX_USER>/opticssymposia.iapp.am/ — set repo Variable CPANEL_LINUX_USER if not iappamfk.
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -11,10 +11,6 @@ on:
 concurrency:
   group: deploy-production
   cancel-in-progress: true
-
-env:
-  # Override with repo secret FTP_TARGET_DIR if your cPanel Linux user is different.
-  DEFAULT_FTP_DIR: /home/iappamfk/opticssymposia.iapp.am/
 
 jobs:
   deploy:
@@ -41,14 +37,15 @@ jobs:
           T: ${{ secrets.FTP_TARGET_DIR }}
         run: |
           set -e
-          CP_USER="iappamfk"
+          U='${{ vars.CPANEL_LINUX_USER }}'
+          if [ -z "$U" ]; then U="iappamfk"; fi
           if [ -n "$T" ]; then
             D="$T"
             if ! echo "$D" | grep -qE '^/home/'; then
-              D="/home/${CP_USER}/$(echo "$D" | sed 's:^/*::')"
+              D="/home/${U}/$(echo "$D" | sed 's:^/*::')"
             fi
           else
-            D="${{ env.DEFAULT_FTP_DIR }}"
+            D="/home/${U}/opticssymposia.iapp.am/"
           fi
           case "$D" in
             */) ;;
