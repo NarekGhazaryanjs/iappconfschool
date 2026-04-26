@@ -9,5 +9,6 @@ opticssymposia-site.zip
 # IDE
 .cursor/
 .vscode/
+._*
 *.swp
 *~

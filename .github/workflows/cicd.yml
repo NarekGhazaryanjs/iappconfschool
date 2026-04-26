@@ -47,6 +47,7 @@ jobs:
           case "$D" in
             */) ;; *) D="${D}/" ;;
           esac
+          echo "FTP server-dir will be: $D"
           echo "dir=$D" >> "$GITHUB_OUTPUT"
 
       - name: Deploy
@@ -77,3 +78,23 @@ jobs:
             iapp-deploy.zip
             shablon.txt
             opticssymposia-site.zip
+
+      - name: Verify live
+        if: success()
+        run: |
+          set -e
+          URL="https://opticssymposia.iapp.am/invited-speakers.html"
+          for i in 1 2 3 4 5 6; do
+            B=$(curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$URL" || true)
+            if echo "$B" | grep -qEi 'N2G Brains|footer-credit'; then
+              echo "Live HTML still has N2G / footer-credit (try $i/6) — not the repo copy on this host."
+              if [ "$i" -eq 6 ]; then
+                echo "::error title=Live site not updated::FTP is probably uploading to the wrong folder. In repo Settings → Secrets, set FTP_TARGET_DIR to the folder cPanel file manager shows for opticssymposia.iapp.am (often opticssymposia.iapp.am/). Re-run the workflow after fixing."
+                exit 1
+              fi
+              sleep 25
+            else
+              echo "OK: public URL has no N2G footer in HTML source."
+              exit 0
+            fi
+          done
