@@ -1,5 +1,6 @@
-# OPTICS-15 static site → cPanel. Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
-# See README — server-dir = document root for https://opticssymposia.iapp.am/
+# Push main → FTP → https://opticssymposia.iapp.am/
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+# Optional: repo → Settings → Variables → CPANEL_FTP_DIR = path from FTP home (end with /)
 
 name: Deploy iappconfschool to cPanel
 
@@ -14,8 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Same folder as /home/USER/opticssymposia.iapp.am/ (change here if cPanel path differs)
-  FTP_DEPLOY_DIR: opticssymposia.iapp.am/
+  DEFAULT_FTP_DIR: opticssymposia.iapp.am/
 
 jobs:
   deploy:
@@ -43,8 +43,24 @@ jobs:
           P: ${{ secrets.FTP_PASSWORD }}
         run: |
           if [ -z "$S" ] || [ -z "$U" ] || [ -z "$P" ]; then
-            echo "::error::Set repository secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD"
+            echo "::error::Repository secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD"
             exit 1
+          fi
+
+      - name: Resolve deploy path
+        id: path
+        run: |
+          T="${{ vars.CPANEL_FTP_DIR }}"
+          if [ -n "$T" ]; then
+            case "$T" in
+              */) ;; *) T="${T}/" ;;
+            esac
+            echo "dir=$T" >> "$GITHUB_OUTPUT"
+            echo "Using variable CPANEL_FTP_DIR: $T"
+          else
+            D="${{ env.DEFAULT_FTP_DIR }}"
+            echo "dir=$D" >> "$GITHUB_OUTPUT"
+            echo "Using default: $D"
           fi
 
       - name: Deploy via FTP
@@ -53,10 +69,14 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
           protocol: ftp
           local-dir: ./
-          server-dir: ${{ env.FTP_DEPLOY_DIR }}
-          security: strict
+          server-dir: ${{ steps.path.outputs.dir }}
+          # strict often breaks cPanel shared FTP; loose = plain (typical for port 21)
+          security: loose
+          # New state file = full re-sync (fixes "nothing changes" when delta is stuck)
+          state-name: iappconfschool-sync
           dangerous-clean-slate: false
           log-level: verbose
           exclude: |
