@@ -94,6 +94,9 @@ jobs:
           local-dir: ./
           server-dir: ${{ steps.p.outputs.dir }}
           security: loose
+          # Bumping this forces a fresh .ftp-deploy-sync state so index.html is not stuck vs other pages' mtimes
+          state-name: iappconfschool-sync-v2
+          log-level: verbose
           dangerous-clean-slate: false
           exclude: |
             **/.git*
