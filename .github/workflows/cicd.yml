@@ -96,8 +96,7 @@ jobs:
           security: loose
           state-name: iappconfschool-sync-v2
           log-level: verbose
-          # One-shot full re-upload: index.html was not updating (old Last-Mod vs other pages). Revert to false after one green run.
-          dangerous-clean-slate: true
+          dangerous-clean-slate: false
           exclude: |
             **/.git*
             **/.github/**
