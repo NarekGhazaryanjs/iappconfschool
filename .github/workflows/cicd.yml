@@ -1,5 +1,4 @@
-# Deploy: default server-dir = cPanel standard subdomain path (see Determine step). Override: secret FTP_TARGET_DIR or workflow_dispatch.
-# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+# Deploy: auto-match FTP path to public index (scripts/ftp-resolve-docroot.py) unless override. Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -36,6 +35,7 @@ jobs:
           test -f downloads/1st-announcement.pdf
           test -f .htaccess
           test -f scripts/ftp-read-remote.py
+          test -f scripts/ftp-resolve-docroot.py
 
       - name: Require FTP secrets
         env:
@@ -52,11 +52,12 @@ jobs:
         id: p
         env:
           T: ${{ secrets.FTP_TARGET_DIR }}
+          FTP_HOST: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
         run: |
           set -e
           OVR='${{ github.event.inputs.ftp_path_override }}'
-          # Same pattern as cPanel: Subdomains create public_html/<subdomain>/
-          DEFAULT="public_html/opticssymposia.iapp.am/"
           rel() {
             local x="$1"
             if echo "$x" | grep -qE '^/home/'; then
@@ -77,14 +78,19 @@ jobs:
             echo "dir=$D" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo "Match public index to an FTP path…"
+          if python3 scripts/ftp-resolve-docroot.py; then
+            echo "OK: using matched document root (see log)"
+            exit 0
+          fi
           if [ -n "$T" ]; then
             D=$(fix_slash "$(rel "$T")")
-            echo "Using secret FTP_TARGET_DIR: $D"
+            echo "Match failed; using secret FTP_TARGET_DIR: $D"
             echo "dir=$D" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "Using default: $DEFAULT"
-          echo "dir=$DEFAULT" >> "$GITHUB_OUTPUT"
+          echo "::error::Could not map live site to any FTP path in scripts/ftp-resolve-docroot.py"
+          exit 1
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
