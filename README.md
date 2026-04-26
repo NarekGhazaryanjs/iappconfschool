@@ -9,3 +9,16 @@
 3. zip-ը **Extract** արա այնտեղ (կամ ֆայլերը քարշ արա), որ **արմատում** լինի `index.html`, `css/`, `js/`, `downloads/`, `.htaccess`։
 
 Նոր ենթադոմենը ավելացրու **cPanel → Domains**-ում, document root-ը դիր **`opticssymposia.iapp.am`** (կամ ուր հարմար ա), հետ zip-ը այդ ֆոլդերը։
+
+## CI/CD (GitHub Actions)
+
+`push` / `workflow_dispatch` **main** — **CI** (ֆայլերի ստուգում), հետ **FTP** cPanel․
+
+**Settings → Secrets and variables → Actions**
+
+| Secret | |
+|--------|--|
+| `FTP_SERVER` | host (օր. `server2.reg.am`) |
+| `FTP_USERNAME` | cPanel FTP user |
+| `FTP_PASSWORD` | FTP password |
+| `FTP_TARGET_DIR` | document root FTP-ից, վերջնով `/` — հաճախ **`opticssymposia.iapp.am/`** (նույնը, ինչ cPanel → Domains → Root) |
