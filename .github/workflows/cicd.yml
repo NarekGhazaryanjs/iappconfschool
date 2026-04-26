@@ -1,5 +1,6 @@
-# FTP-Deploy-Action server-dir = path RELATIVE to FTP login dir (cPanel: usually /home/USER), NOT full /home/.../ — or files land in wrong place.
-# Secret FTP_TARGET_DIR may be /home/USER/opticssymposia.iapp.am/ — we strip to opticssymposia.iapp.am/ automatically.
+# server-dir = path relative to WHERE YOUR FTP USER LANDS.
+# Many cPanel FTP users chroot to public_html only — then "opticssymposia.iapp.am/" creates a FAKE folder inside public_html (wrong). Real vhost is sibling: use "../opticssymposia.iapp.am/".
+# Var CPANEL_FTP_CHROOT: public_html (default) | home
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -47,7 +48,7 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve server-dir (relative to FTP home for cPanel)
+      - name: Resolve server-dir (relative to FTP login)
         id: p
         env:
           T: ${{ secrets.FTP_TARGET_DIR }}
@@ -55,10 +56,11 @@ jobs:
           set -e
           U='${{ vars.CPANEL_LINUX_USER }}'
           if [ -z "$U" ]; then U="iappamfk"; fi
+          CHROOT='${{ vars.CPANEL_FTP_CHROOT }}'
+          if [ -z "$CHROOT" ]; then CHROOT="public_html"; fi
           MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
           if [ -z "$MODE" ]; then MODE="home"; fi
           OVR='${{ github.event.inputs.ftp_path_override }}'
-          # Strip /home/USER/ from absolute paths; FTP-Deploy is relative to login dir.
           rel() {
             local x="$1"
             if echo "$x" | grep -qE '^/home/'; then
@@ -82,10 +84,14 @@ jobs:
             esac
           fi
           D=$(rel "$D")
+          if [ "$CHROOT" = "public_html" ] && ! echo "$D" | grep -q '^\.\./'; then
+            D="../$D"
+          fi
           case "$D" in
             */) ;;
             *) D="${D}/" ;;
           esac
+          echo "CPANEL_FTP_CHROOT=$CHROOT"
           echo "server-dir (FTP relative): $D"
           echo "dir=$D" >> "$GITHUB_OUTPUT"
 
@@ -117,21 +123,32 @@ jobs:
             shablon.txt
             opticssymposia-site.zip
 
-      - name: Verify live (no stale N2G in HTML)
+      - name: Verify live (index marker + no N2G)
         if: success()
         run: |
           set -e
           n2g() { curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$1" 2>/dev/null | grep -Eqi 'N2G Brains|footer-credit'; }
+          marker() { curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$1" 2>/dev/null | grep -Fq 'iappconfschool-deploy: active'; }
           for i in 1 2 3 4 5 6; do
-            if n2g "https://opticssymposia.iapp.am/invited-speakers.html" || n2g "https://opticssymposia.iapp.am/program.html"; then
-              echo "try $i/6: N2G still in invited or program (wrong FTP path?)"
+            IDX="https://opticssymposia.iapp.am/index.html"
+            if ! marker "$IDX"; then
+              echo "try $i/6: index has no deploy marker (wrong FTP folder or cache)"
               if [ "$i" -eq 6 ]; then
-                echo "::error::Set secret FTP_TARGET_DIR to exact Document Root from cPanel (Subdomains). Or try repo Variable CPANEL_FTP_DIR_MODE=home or public_html (default is domains)."
+                echo "::error::FTP still not updating the real site. In repo Settings → Variables set CPANEL_FTP_CHROOT=home (if main cPanel login) or keep public_html. Or set FTP_TARGET_DIR to ../opticssymposia.iapp.am/ manually."
+                exit 1
+              fi
+              sleep 25
+              continue
+            fi
+            if n2g "https://opticssymposia.iapp.am/invited-speakers.html" || n2g "https://opticssymposia.iapp.am/program.html"; then
+              echo "try $i/6: N2G still in invited or program"
+              if [ "$i" -eq 6 ]; then
+                echo "::error::N2G check failed."
                 exit 1
               fi
               sleep 25
             else
-              echo "OK: live pages clean (no N2G in source)"
+              echo "OK: index marker present, no N2G"
               exit 0
             fi
           done
