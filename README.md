@@ -25,5 +25,20 @@ GitHub → **Settings → Secrets and variables → Actions**․
 | `FTP_PASSWORD` | FTP password |
 | `FTP_TARGET_DIR` | cPanel-ի արմատը FTP login-ից, օր. **`opticssymposia.am/`** (վերջնով `/`) |
 
-`server-dir` path-ը `.github/workflows/cicd.yml` ֆայլում ա, եթि cPanel-ում path-ը փոխեիր — ասա, թարմացնենք։
+`server-dir` path-ը `.github/workflows/cicd.yml` ֆայլում ա, եթի cPanel-ում path-ը փոխեիր — ասա, թարմացնենք։
+
+## Եթի բրաուզերում `DNS_PROBE_FINISHED_NXDOMAIN`
+
+Սա **DNS** ա, ոչ GitHub-ի ու ոչ FTP-ի bug․ դոմենը **համացանցում IP չի ստանում**։
+
+1. **reg.am** (կամ ուր գրանցված ա `opticssymposia.am`) — մտիր **կառավարման / DNS**։
+2. **`A` record** `opticssymposia.am`-ի (և `www`-ի, եթի պետք ա) համար դիր **նույն IP-ն**, ինչ cPanel-ի account-ին ա տրված․ cPanel աջ կողմում սովորաբար **Shared IP** / **Server Information** ա։
+3. **Nameserver-ները** reg.am-ի հավասար պահի, եթի DNS-ը reg.am-ում ես խմբագրում — կամ NS-ները host-ի տվածը կիրառի։
+4. Սպասի **նվազագույն 15ր–24ժ** propagation, հետո փորձիր `https://opticssymposia.am`։
+
+**Ստուգում.** [dnschecker.org](https://dnschecker.org) — գրիր `opticssymposia.am`, տես՝ **A record** արդի՞ն ա։ Երբ աշխատի, նոր **SSL** (Let’s Encrypt / AutoSSL) cPanel-ից։
+
+## cPanel File Manager
+
+Deploy-ից հետո `opticssymposia.am` արմատում պետք է լինի **`index.html`**, `css/`, `js/`։ Եթի չկան — GitHub **Actions**-ում CD job-ի log-ը նայիր (FTP error)։
 

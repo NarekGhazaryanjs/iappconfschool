@@ -1,0 +1,8 @@
+# Static site (Apache)
+DirectoryIndex index.html index.htm
+Options -Indexes
+
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+</IfModule>
