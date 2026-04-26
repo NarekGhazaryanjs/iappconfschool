@@ -81,9 +81,9 @@ jobs:
             echo "dir=$D" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Matches panel: “Корневая папка” /home/iappamfk/opticssymposia.iapp.am
-          D="opticssymposia.iapp.am/"
-          echo "Default (cPanel document root for this subdomain, not public_html/): $D"
+          # cPanel: /home/USER/opticssymposia.iapp.am — same style as iapp deploy uses /public_html/
+          D="/opticssymposia.iapp.am/"
+          echo "Default: $D"
           echo "dir=$D" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via FTP
@@ -96,9 +96,10 @@ jobs:
           local-dir: ./
           server-dir: ${{ steps.p.outputs.dir }}
           security: loose
-          state-name: iappconfschool-sync-v3
+          # New state = full re-upload; clean slate = mirror repo on server (fixes “green but site old”)
+          state-name: iappconfschool-sync-v4
           log-level: standard
-          dangerous-clean-slate: false
+          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.github/**
