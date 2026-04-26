@@ -94,10 +94,10 @@ jobs:
           local-dir: ./
           server-dir: ${{ steps.p.outputs.dir }}
           security: loose
-          # Bumping this forces a fresh .ftp-deploy-sync state so index.html is not stuck vs other pages' mtimes
           state-name: iappconfschool-sync-v2
           log-level: verbose
-          dangerous-clean-slate: false
+          # One-shot full re-upload: index.html was not updating (old Last-Mod vs other pages). Revert to false after one green run.
+          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.github/**
