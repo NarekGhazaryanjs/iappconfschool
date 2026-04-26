@@ -125,6 +125,22 @@ jobs:
           SERVER_DIR: ${{ steps.p.outputs.dir }}
         run: python3 scripts/ftp-read-remote.py
 
+      # Must match what visitors get; otherwise FTP path ≠ subdomain document root.
+      - name: Verify public HTTPS index matches deploy
+        if: success()
+        run: |
+          set -e
+          for i in 1 2 3 4 5; do
+            if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "https://opticssymposia.iapp.am/?_=${GITHUB_RUN_ID}${i}" | grep -q "iappconfschool-deploy"; then
+              echo "OK: live index (HTTPS) contains deploy marker"
+              exit 0
+            fi
+            echo "Attempt $i/5: marker not in public index..."
+            sleep 8
+          done
+          echo "::error::opticssymposia.iapp.am (HTTPS) does not serve the same index as Git. FTP is almost certainly using the wrong folder. In cPanel: Subdomains -> Document root, then set repository secret FTP_TARGET_DIR to that path relative to FTP (e.g. public_html/opticssymposia.iapp.am/)."
+          exit 1
+
       - name: Verify live HTML (N2G)
         if: success()
         run: |

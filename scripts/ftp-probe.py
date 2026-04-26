@@ -19,6 +19,7 @@ PROBE_PREFIX = "gh-probe-"
 
 # Segments: cwd each part in order (handles .. and nested paths)
 CANDIDATES: list[tuple[str, ...]] = [
+    ("public_html", "opticssymposia.iapp.am"),  # common cPanel: subdomain under public_html
     ("opticssymposia.iapp.am",),
     ("..", "opticssymposia.iapp.am"),
     ("public_html", "..", "opticssymposia.iapp.am"),
@@ -101,12 +102,14 @@ def main() -> int:
                 print(f"probe-cleanup: {e!r}", file=sys.stderr)
             return 0
 
-    # Not found: fallback for workflow
-    print("::warning::Probe did not find document root; using default opticssymposia.iapp.am/", file=sys.stderr)
-    if out_path:
-        with open(out_path, "a", encoding="utf-8") as go:
-            go.write("dir=opticssymposia.iapp.am/\n")
-    return 0
+    # Do not guess: wrong path makes CI green but the real website stays stale.
+    print(
+        "::error::FTP probe: no candidate served probe file at "
+        f"{BASE_URL!r} — set repository secret FTP_TARGET_DIR to the cPanel Subdomain "
+        '"Document root" (relative to FTP home, e.g. public_html/opticssymposia.iapp.am/)',
+        file=sys.stderr,
+    )
+    return 1
 
 
 if __name__ == "__main__":
