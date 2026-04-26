@@ -1,4 +1,4 @@
-# CPANEL_FTP_DIR_MODE: domains (default) | home | public_html — cPanel "Document root" for the subdomain. CPANEL_LINUX_USER if not iappamfk.
+# Default matches cPanel: /home/iappamfk/opticssymposia.iapp.am/ — CPANEL_FTP_DIR_MODE: home | public_html | domains. CPANEL_LINUX_USER if not iappamfk.
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -55,7 +55,7 @@ jobs:
           U='${{ vars.CPANEL_LINUX_USER }}'
           if [ -z "$U" ]; then U="iappamfk"; fi
           MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
-          if [ -z "$MODE" ]; then MODE="domains"; fi
+          if [ -z "$MODE" ]; then MODE="home"; fi
           OVR='${{ github.event.inputs.ftp_path_override }}'
           if [ -n "$OVR" ]; then
             D="$OVR"
