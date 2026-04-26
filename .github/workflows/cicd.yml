@@ -6,6 +6,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      ftp_path_override:
+        description: "Paste cPanel Document Root for opticssymposia (e.g. /home/USER/...). Saves re-adding secret."
+        required: false
+        type: string
 
 concurrency:
   group: deploy-production
@@ -51,7 +56,13 @@ jobs:
           if [ -z "$U" ]; then U="iappamfk"; fi
           MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
           if [ -z "$MODE" ]; then MODE="domains"; fi
-          if [ -n "$T" ]; then
+          OVR='${{ github.event.inputs.ftp_path_override }}'
+          if [ -n "$OVR" ]; then
+            D="$OVR"
+            if ! echo "$D" | grep -qE '^/home/'; then
+              D="/home/${U}/$(echo "$D" | sed 's:^/*::')"
+            fi
+          elif [ -n "$T" ]; then
             D="$T"
             if ! echo "$D" | grep -qE '^/home/'; then
               D="/home/${U}/$(echo "$D" | sed 's:^/*::')"
