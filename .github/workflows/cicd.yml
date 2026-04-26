@@ -1,6 +1,9 @@
-# Push to main → GitHub Actions → FTP deploy to cPanel. Live = repo when secrets are correct.
-# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR
-# FTP_TARGET_DIR must be the cPanel *document root* for https://opticssymposia.iapp.am/ (e.g. opticssymposia.iapp.am/ with trailing slash)
+# Push to main → GitHub Actions → FTP to cPanel document root for https://opticssymposia.iapp.am/
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD only
+# server-dir is fixed: same folder as /home/USER/opticssymposia.iapp.am/ (cPanel File Manager for this subdomain)
+
+env:
+  FTP_DEPLOY_DIR: opticssymposia.iapp.am/
 
 name: CI / CD
 
@@ -46,17 +49,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Require all FTP secrets
+      - name: Require FTP host & credentials
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
         run: |
-          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ] || [ -z "$FTP_TARGET_DIR" ]; then
-            echo "::error::Set all of: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR (Settings → Secrets → Actions)"
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
+            echo "::error::Set secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD (Settings → Actions)"
             exit 1
           fi
+          echo "Deploy target dir: $FTP_DEPLOY_DIR (hardcoded; matches cPanel subdomain root)"
 
       - name: Sync to hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -65,7 +68,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
+          server-dir: ${{ env.FTP_DEPLOY_DIR }}
           security: strict
           log-level: verbose
           exclude: |
@@ -90,5 +93,5 @@ jobs:
             fi
             echo "Still seeing N2G in live HTML (wrong FTP path or cache)."
           done
-          echo "::warning::LIVE still contains N2G while repo does not. Set GitHub secret FTP_TARGET_DIR to cPanel document root for opticssymposia.iapp.am (e.g. opticssymposia.iapp.am/ ). Or delete the line in File Manager in all .html for this site."
+          echo "::warning::LIVE still has N2G in HTML. If deploy logs show success, cPanel may use a different path than $FTP_DEPLOY_DIR — check Domains / File Manager. Or delete the p.footer-credit line in .html on the server once."
           exit 1

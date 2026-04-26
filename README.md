@@ -2,19 +2,22 @@
 
 Ստատիկ կայք (HTML/CSS/JS)։
 
-## Ինչպես live-ը միշտ repo-ի հետ նույնը լինի
+## CI/CD (GitHub Actions)
 
-1. **Մի անգամ GitHub-ում** (repo → **Settings → Secrets and variables → Actions**) լրացրու․
+1. **Secrets` միայն երեքը** (repo → **Settings → Secrets and variables → Actions**)
 
-| Secret | Ո՞րն է |
-|--------|--------|
-| `FTP_SERVER` | FTP host (օր. `server2.reg.am`) |
-| `FTP_USERNAME` | cPanel FTP user (օր. `iappamfk`) |
+| Secret | |
+|--------|--|
+| `FTP_SERVER` | host (օր. `server2.reg.am`) |
+| `FTP_USERNAME` | cPanel FTP user |
 | `FTP_PASSWORD` | FTP password |
-| `FTP_TARGET_DIR` | **Էյ** path-ը, որ cPanel-ում ցուցադրվում է այն **ֆոլդերի** համար, որն ասում է `https://opticssymposia.iapp.am/` (օր. **`opticssymposia.iapp.am/`**), **վերջնով `/`** |
 
-2. **Երբ `FTP_TARGET_DIR`-ը սխալ ա** (օր. այլ folder, առանց `.iapp.am`), GitHub-ից ֆայլերը **ուժի folder** են գնում — կայքը **քո URL-ում** չի փոխվում, թեև push-ը կանաչ է։
+2. **Document root-ը** workflow-ի `env.FTP_DEPLOY_DIR` արժեքն ա` **`opticssymposia.iapp.am/`** (նույնը, ինչ` `/home/USER/opticssymposia.iapp.am/`)` secret-ով path չէ ասում։
 
-3. **Workflow**․ `main` **push** → **CI** → **FTP** → **Verify live** (live `registration.html`-ում N2G չլինի). [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions). Եթի **Verify**-ը **կարմիր** ա` `FTP_TARGET_DIR` path-ը չէ` File Manager-ի `opticssymposia.iapp.am` folder-ին։
+3. `main` **push** → deploy այդ folder, հետո live ստուգում։ [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions)
 
-4. **Ձեռքով zip** (եթի հանկարծ FTP չես ուզում)․ `.\scripts\zip-site.ps1` → upload cPanel **File Manager** → `opticssymposia.iapp.am` document root։
+4. Եթէ host-ը **ուրիշ արմատ** ա (ոչ` `opticssymposia.iapp.am/`), `FTP_DEPLOY_DIR` արժեքը փոխի `.github/workflows/cicd.yml` `env` բաժնում` մեկ տող։
+
+5. **Zip ձեռքով` `.\scripts\zip-site.ps1` → File Manager` `opticssymposia.iapp.am`։**
+
+**Նշում` հին `FTP_TARGET_DIR` secret-ը` կարաս ջնջի, workflow-ն այլ չի օգտագործի։
