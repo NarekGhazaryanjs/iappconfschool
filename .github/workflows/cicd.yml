@@ -1,4 +1,5 @@
-# Deploy: server-dir = secret FTP_TARGET_DIR (cPanel Subdomain Document root, relative to FTP home) or workflow_dispatch. Same idea as iapp: one explicit path, no guessing. Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR
+# Deploy: cPanel root for opticssymposia.iapp.am is /home/USER/opticssymposia.iapp.am (not under public_html). Default server-dir: opticssymposia.iapp.am/ — override with secret FTP_TARGET_DIR or workflow_dispatch.
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -80,8 +81,10 @@ jobs:
             echo "dir=$D" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "::error::Set secret FTP_TARGET_DIR to the cPanel Subdomain document root (path under your FTP home, e.g. public_html/opticssymposia.iapp.am/ — from Subdomains → opticssymposia.iapp.am → Document Root). iapp used a fixed /public_html/; this subdomain has its own folder."
-          exit 1
+          # Matches panel: “Корневая папка” /home/iappamfk/opticssymposia.iapp.am
+          D="opticssymposia.iapp.am/"
+          echo "Default (cPanel document root for this subdomain, not public_html/): $D"
+          echo "dir=$D" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
