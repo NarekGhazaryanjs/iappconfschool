@@ -36,6 +36,7 @@ jobs:
           test -f downloads/1st-announcement.pdf
           test -f .htaccess
           test -f scripts/ftp-probe.py
+          test -f scripts/ftp-read-remote.py
 
       - name: Require FTP secrets
         env:
@@ -99,7 +100,7 @@ jobs:
           security: loose
           state-name: iappconfschool-sync-v3
           log-level: standard
-          dangerous-clean-slate: false
+          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.github/**
@@ -115,26 +116,26 @@ jobs:
             shablon.txt
             opticssymposia-site.zip
 
-      - name: Verify live
+      - name: Verify index on FTP (authoritative)
+        if: success()
+        env:
+          FTP_HOST: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+          SERVER_DIR: ${{ steps.p.outputs.dir }}
+        run: python3 scripts/ftp-read-remote.py
+
+      - name: Verify live HTML (N2G)
         if: success()
         run: |
           set -e
           n2g() { curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$1" 2>/dev/null | grep -Eqi 'N2G Brains|footer-credit'; }
-          marker() { curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$1" 2>/dev/null | grep -Fq 'iappconfschool-deploy: active'; }
           for i in 1 2 3 4 5 6; do
-            if ! marker "https://opticssymposia.iapp.am/index.html"; then
-              if [ "$i" -eq 6 ]; then
-                echo "::error::index.html on live has no iappconfschool-deploy marker — path still wrong or cache. Check Actions log for 'Discovered live FTP'."
-                exit 1
-              fi
-              sleep 20
-              continue
-            fi
             if n2g "https://opticssymposia.iapp.am/invited-speakers.html" || n2g "https://opticssymposia.iapp.am/program.html"; then
-              if [ "$i" -eq 6 ]; then exit 1; fi
+              if [ "$i" -eq 6 ]; then echo "::error::N2G still in live HTML"; exit 1; fi
               sleep 20
             else
-              echo "OK: marker + no N2G"
+              echo "OK: no N2G in invited/program"
               exit 0
             fi
           done
