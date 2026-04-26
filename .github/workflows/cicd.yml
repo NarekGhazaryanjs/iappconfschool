@@ -49,19 +49,27 @@ jobs:
 
       - name: Resolve deploy path
         id: path
+        env:
+          SECT: ${{ secrets.FTP_TARGET_DIR }}
+          VAR: ${{ vars.CPANEL_FTP_DIR }}
         run: |
-          T="${{ vars.CPANEL_FTP_DIR }}"
-          if [ -n "$T" ]; then
-            case "$T" in
-              */) ;; *) T="${T}/" ;;
-            esac
-            echo "dir=$T" >> "$GITHUB_OUTPUT"
-            echo "Using variable CPANEL_FTP_DIR: $T"
+          # Priority: secret FTP_TARGET_DIR (relative path, e.g. opticssymposia.iapp.am/) → var CPANEL_FTP_DIR → default
+          T=""
+          if [ -n "$SECT" ]; then
+            T="$SECT"
+            echo "Using secret FTP_TARGET_DIR (do not use /home/... full path; use path from FTP chroot, e.g. opticssymposia.iapp.am/)"
+          elif [ -n "$VAR" ]; then
+            T="$VAR"
+            echo "Using variable CPANEL_FTP_DIR"
           else
-            D="${{ env.DEFAULT_FTP_DIR }}"
-            echo "dir=$D" >> "$GITHUB_OUTPUT"
-            echo "Using default: $D"
+            T="${{ env.DEFAULT_FTP_DIR }}"
+            echo "Using default"
           fi
+          case "$T" in
+            */) ;; *) T="${T}/" ;;
+          esac
+          echo "dir=$T" >> "$GITHUB_OUTPUT"
+          echo "Deploy server-dir: $T"
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

@@ -7,9 +7,10 @@
 | | |
 |--|--|
 | **Secrets** | `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` |
-| **Variable (ըստ ցանկության)** | `CPANEL_FTP_DIR` — cPanel-ի `File Manager`→ այն `*-ի` path-ը, ուր ասում ա` `opticssymposia.iapp.am` (օր. `opticssymposia.iapp.am/`, կամ եթi host-ը այլ ա` `public_html/…/`, **վերջնով` `/`**) |  
+| **Optional override** (միաժամանակ մի՛ երկուսը) | Secret `FTP_TARGET_DIR` **կամ** Variable `CPANEL_FTP_DIR` |
+| **Արժեք** | FTP-ի home-ից **relative** path, օր. **`opticssymposia.iapp.am/`** — **ոչ**՝ `/home/iappamfk/...` (chroot-ի պատճառով) |  
 
-Եթի variable **չ**ես սահմանի, deploy-ն գնում ա **`opticssymposia.iapp.am/`**` workflow-ի default-ով։  
+Չլրացնելու դեպքում deploy-ի default-ը **`opticssymposia.iapp.am/`** է։
 
 ## Եթի push-ից հետո live-ը չի փոխվում
 
