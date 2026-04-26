@@ -56,7 +56,9 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          # cPanel path; set secret FTP_TARGET_DIR to e.g. opticssymposia/ (trailing / required)
+          # Secret FTP_TARGET_DIR must match Domains list "root" from FTP chroot, e.g.:
+          #   opticssymposia.am/   (cPanel shows document root as /opticssymposia.am)
+          # Trailing / required. Wrong folder name = files deploy to wrong place.
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           security: strict
           log-level: verbose
