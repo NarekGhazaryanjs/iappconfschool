@@ -1,5 +1,5 @@
-# Same pattern as Desktop/iapp/.github/workflows/deploy.yml (iapp: server-dir: /public_html/)
-# This site is a subdomain: use /opticssymposia.iapp.am/ from the FTP account root.
+# Same FTP account as iapp. Successful iapp run used server-dir: /home/iappamfk/public_html/ (see iapp _run_*.log).
+# Subdomain document root: /home/iappamfk/opticssymposia.iapp.am/
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Must match cPanel: absolute path from FTP root, leading slash (like /public_html/ on iapp)
-  DEFAULT_FTP_DIR: /opticssymposia.iapp.am/
+  # Override with repo secret FTP_TARGET_DIR if your cPanel Linux user is different.
+  DEFAULT_FTP_DIR: /home/iappamfk/opticssymposia.iapp.am/
 
 jobs:
   deploy:
@@ -41,16 +41,15 @@ jobs:
           T: ${{ secrets.FTP_TARGET_DIR }}
         run: |
           set -e
-          if [ -n "$T" ]; then D="$T"; else D="${{ env.DEFAULT_FTP_DIR }}"; fi
-          # Pasted cPanel full path: /home/USER/opticssymposia.iapp.am -> opticssymposia.iapp.am
-          if echo "$D" | grep -q '^/home/'; then
-            D=$(echo "$D" | sed 's#^/home/[^/]*/##')
+          CP_USER="iappamfk"
+          if [ -n "$T" ]; then
+            D="$T"
+            if ! echo "$D" | grep -qE '^/home/'; then
+              D="/home/${CP_USER}/$(echo "$D" | sed 's:^/*::')"
+            fi
+          else
+            D="${{ env.DEFAULT_FTP_DIR }}"
           fi
-          # Like iapp: always absolute from FTP root (/public_html/ style)
-          case "$D" in
-            /*) ;;
-            *) D="/$D" ;;
-          esac
           case "$D" in
             */) ;;
             *) D="${D}/" ;;
@@ -92,9 +91,9 @@ jobs:
           for i in 1 2 3 4 5 6; do
             B=$(curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$URL")
             if echo "$B" | grep -qEi 'N2G Brains|footer-credit'; then
-              echo "try $i/6: live still has N2G (wrong folder or still syncing)"
+              echo "try $i/6: live still has N2G (wrong path or not synced yet)"
               if [ "$i" -eq 6 ]; then
-                echo "::error::Live not updated. In Secrets set FTP_TARGET_DIR to /opticssymposia.iapp.am/ (or leave unset). Must match cPanel document root for the subdomain."
+                echo "::error::Set GitHub secret FTP_TARGET_DIR to the full cPanel path for opticssymposia (e.g. /home/<cpanel_user>/opticssymposia.iapp.am/) — same style as /home/iappamfk/public_html/ on the main iapp deploy."
                 exit 1
               fi
               sleep 25
