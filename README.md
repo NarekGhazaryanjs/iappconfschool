@@ -2,6 +2,21 @@
 
 Ստատիկ կայք — GitHub Actions․ `main` **push** կամ **Run workflow**․ **CI** + **FTP deploy** cPanel-ի **վեբ արմատի թղթապանակ** (օր. `opticssymposia.am/`, `public_html/sub/…/`)․ `FTP_TARGET_DIR` **պետք է ճիշտ լինի** (տես ներքև)։
 
+## Լրիվ deploy — հերթական ցուցակ (ամեն ինչ code-ով արված)
+
+**Ես (repo-ում) կարող եմ**․ workflow, ֆայլեր, push — **ոչ** GitHub Secrets, ոչ reg.am, ոչ cPanel (մուտք չունեմ)։
+
+| # | Քեզ մոտ (մի անգամ / երբ փոխվի) |
+|---|--------------------------------|
+| 1 | **cPanel → Domains**․ `opticssymposia.am` → կորենը `opticssymposia` (քո դեպքում)։ |
+| 2 | **GitHub** → repo → **Settings → Secrets and variables → Actions**․ չորս secret․ `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, **`FTP_TARGET_DIR` = `opticssymposia/`** (վերջնով `/`, **նույն folder-ը, ինչ File Manager-ում արմատը**)։ |
+| 3 | **reg.am**․ `opticssymposia.am` → **ռեսուրսային գրառումներ (DNS)** — **A @** և **A www** → cPanel **Shared IP** (օր. `49.12.164.154`)։ **A record-ի տեղը` ոչ` նեյմսերվերների** էջն ա։ |
+| 4 | **Deploy**․ `git push origin main` կամ PowerShell-ում `.\scripts\trigger-deploy.ps1` → [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions) — **CI** կանաչ, հետ **CD (FTP)**։ |
+| 5 | **Ստուգում**․ cPanel **File Manager** → `opticssymposia` → `index.html`, `css/`, `js/`, `downloads/`։ |
+| 6 | **HTTPS**․ **SSL/TLS Status** → Run AutoSSL → **Domains** → HTTPS redirect (երբ cert-ը valid ա)։ |
+
+`downloads/1st-announcement.pdf` — repo-ում կա (CI պահանջ)․ եթի պետք ա իսկական PDF, փոխարինիր host-ում / commit-ով։
+
 ## Ենթադոմեն (subdomain) — սկիզբից + deploy
 
 Թիրախը, օր. **`confschool.iapp.am`** (անունն ընտրում ես դու)․ iapp-ի cPanel, primary domain-ը `iapp.am` ա, shared IP, օր. **49.12.164.154**․
