@@ -1,6 +1,5 @@
-# server-dir = path relative to WHERE YOUR FTP USER STARTS.
-# - Best: cPanel → FTP Accounts → new user, Directory = this subdomain’s folder only → in GitHub set CPANEL_FTP_IS_SUBACCOUNT=true (server-dir ./).
-# - Else: CPANEL_FTP_CHROOT: home (default) | public_html
+# Deploy: path is auto-detected (scripts/ftp-probe.py) unless FTP_TARGET_DIR or workflow input overrides.
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD. Optional: FTP_TARGET_DIR = relative (e.g. opticssymposia.iapp.am/ or ./).
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -10,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       ftp_path_override:
-        description: "Paste cPanel Document Root for opticssymposia (e.g. /home/USER/...). Saves re-adding secret."
+        description: "Override FTP path (relative to FTP login), e.g. opticssymposia.iapp.am/ or ./"
         required: false
         type: string
 
@@ -36,31 +35,28 @@ jobs:
           test -f js/main.js
           test -f downloads/1st-announcement.pdf
           test -f .htaccess
+          test -f scripts/ftp-probe.py
 
-      - name: Require FTP secrets (copy from iapp repo if missing)
+      - name: Require FTP secrets
         env:
           A: ${{ secrets.FTP_SERVER }}
           B: ${{ secrets.FTP_USERNAME }}
           C: ${{ secrets.FTP_PASSWORD }}
         run: |
           if [ -z "$A" ] || [ -z "$B" ] || [ -z "$C" ]; then
-            echo "::error::Add FTP_SERVER, FTP_USERNAME, FTP_PASSWORD to this repository (Settings → Secrets). They are per-repo — same values as the iapp project."
+            echo "::error::Set FTP_SERVER, FTP_USERNAME, FTP_PASSWORD for this repository."
             exit 1
           fi
 
-      - name: Resolve server-dir (relative to FTP login)
+      - name: Determine FTP server-dir
         id: p
         env:
+          FTP_HOST: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
           T: ${{ secrets.FTP_TARGET_DIR }}
         run: |
           set -e
-          U='${{ vars.CPANEL_LINUX_USER }}'
-          if [ -z "$U" ]; then U="iappamfk"; fi
-          SUB='${{ vars.CPANEL_FTP_IS_SUBACCOUNT }}'
-          CHROOT='${{ vars.CPANEL_FTP_CHROOT }}'
-          if [ -z "$CHROOT" ]; then CHROOT="home"; fi
-          MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
-          if [ -z "$MODE" ]; then MODE="home"; fi
           OVR='${{ github.event.inputs.ftp_path_override }}'
           rel() {
             local x="$1"
@@ -70,36 +66,26 @@ jobs:
               echo "$x" | sed 's:^/*::'
             fi
           }
-          if [ "$SUB" = "true" ] || [ "$SUB" = "1" ] || [ "$SUB" = "yes" ]; then
-            D="./"
-          elif [ -n "$OVR" ]; then
-            D=$(rel "$OVR")
-          elif [ -n "$T" ]; then
-            D=$(rel "$T")
-          else
-            case "$MODE" in
-              home)
-                D="opticssymposia.iapp.am/" ;;
-              public_html)
-                D="public_html/opticssymposia.iapp.am/" ;;
-              domains|*)
-                D="domains/opticssymposia.iapp.am/public_html/" ;;
+          fix_slash() {
+            case "$1" in
+              */) echo "$1" ;;
+              *) echo "$1/" ;;
             esac
-            D=$(rel "$D")
+          }
+          if [ -n "$OVR" ]; then
+            D=$(fix_slash "$(rel "$OVR")")
+            echo "Using workflow input: $D"
+            echo "dir=$D" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          if [ "$SUB" != "true" ] && [ "$SUB" != "1" ] && [ "$SUB" != "yes" ]; then
-            D=$(rel "$D")
-            if [ "$CHROOT" = "public_html" ] && ! echo "$D" | grep -q '^\.\./'; then
-              D="../$D"
-            fi
+          if [ -n "$T" ]; then
+            D=$(fix_slash "$(rel "$T")")
+            echo "Using secret FTP_TARGET_DIR: $D"
+            echo "dir=$D" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          case "$D" in
-            */) ;;
-            *) D="${D}/" ;;
-          esac
-          echo "CPANEL_FTP_CHROOT=$CHROOT"
-          echo "server-dir (FTP relative): $D"
-          echo "dir=$D" >> "$GITHUB_OUTPUT"
+          echo "Auto-probing FTP path (upload tiny file, check HTTPS)..."
+          python3 scripts/ftp-probe.py
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -111,8 +97,8 @@ jobs:
           local-dir: ./
           server-dir: ${{ steps.p.outputs.dir }}
           security: loose
-          state-name: iappconfschool-sync-v2
-          log-level: verbose
+          state-name: iappconfschool-sync-v3
+          log-level: standard
           dangerous-clean-slate: false
           exclude: |
             **/.git*
@@ -129,32 +115,26 @@ jobs:
             shablon.txt
             opticssymposia-site.zip
 
-      - name: Verify live (index marker + no N2G)
+      - name: Verify live
         if: success()
         run: |
           set -e
           n2g() { curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$1" 2>/dev/null | grep -Eqi 'N2G Brains|footer-credit'; }
           marker() { curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$1" 2>/dev/null | grep -Fq 'iappconfschool-deploy: active'; }
           for i in 1 2 3 4 5 6; do
-            IDX="https://opticssymposia.iapp.am/index.html"
-            if ! marker "$IDX"; then
-              echo "try $i/6: index has no deploy marker (wrong FTP folder or cache)"
+            if ! marker "https://opticssymposia.iapp.am/index.html"; then
               if [ "$i" -eq 6 ]; then
-                echo "::error::FTP is not writing the live document root. Create a cPanel FTP user whose home folder IS ONLY this subdomain, then set repo Variable CPANEL_FTP_IS_SUBACCOUNT=true. Or adjust CPANEL_FTP_CHROOT / FTP_TARGET_DIR."
+                echo "::error::index.html on live has no iappconfschool-deploy marker — path still wrong or cache. Check Actions log for 'Discovered live FTP'."
                 exit 1
               fi
-              sleep 25
+              sleep 20
               continue
             fi
             if n2g "https://opticssymposia.iapp.am/invited-speakers.html" || n2g "https://opticssymposia.iapp.am/program.html"; then
-              echo "try $i/6: N2G still in invited or program"
-              if [ "$i" -eq 6 ]; then
-                echo "::error::N2G check failed."
-                exit 1
-              fi
-              sleep 25
+              if [ "$i" -eq 6 ]; then exit 1; fi
+              sleep 20
             else
-              echo "OK: index marker present, no N2G"
+              echo "OK: marker + no N2G"
               exit 0
             fi
           done
