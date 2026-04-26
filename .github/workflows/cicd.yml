@@ -1,97 +1,76 @@
-# Push to main → GitHub Actions → FTP to cPanel document root for https://opticssymposia.iapp.am/
-# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD only
-# server-dir is fixed: same folder as /home/USER/opticssymposia.iapp.am/ (cPanel File Manager for this subdomain)
+# OPTICS-15 static site → cPanel. Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+# See README — server-dir = document root for https://opticssymposia.iapp.am/
 
-env:
-  FTP_DEPLOY_DIR: opticssymposia.iapp.am/
-
-name: CI / CD
+name: Deploy iappconfschool to cPanel
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: deploy-production
   cancel-in-progress: true
 
+env:
+  # Same folder as /home/USER/opticssymposia.iapp.am/ (change here if cPanel path differs)
+  FTP_DEPLOY_DIR: opticssymposia.iapp.am/
+
 jobs:
-  ci:
-    name: CI — verify static site
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify required files
+      - name: Validate required files
         run: |
           set -e
-          for f in \
-            index.html program.html registration.html \
-            history.html gallery.html invited-speakers.html; do
-            test -f "$f" || { echo "Missing: $f"; exit 1; }
+          for f in index.html program.html registration.html history.html gallery.html invited-speakers.html; do
+            test -f "$f"
           done
           test -f css/style.css
           test -f css/fonts.css
           test -f js/main.js
           test -f downloads/1st-announcement.pdf
-          echo "All required site files present."
+          test -f .htaccess
 
-  deploy:
-    name: CD — FTP to hosting
-    needs: [ ci ]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Require FTP host & credentials
+      - name: Require FTP secrets
         env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          S: ${{ secrets.FTP_SERVER }}
+          U: ${{ secrets.FTP_USERNAME }}
+          P: ${{ secrets.FTP_PASSWORD }}
         run: |
-          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
-            echo "::error::Set secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD (Settings → Actions)"
+          if [ -z "$S" ] || [ -z "$U" ] || [ -z "$P" ]; then
+            echo "::error::Set repository secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD"
             exit 1
           fi
-          echo "Deploy target dir: $FTP_DEPLOY_DIR (hardcoded; matches cPanel subdomain root)"
 
-      - name: Sync to hosting
+      - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
           local-dir: ./
           server-dir: ${{ env.FTP_DEPLOY_DIR }}
           security: strict
+          dangerous-clean-slate: false
           log-level: verbose
           exclude: |
-            **/.github/**
             **/.git*
+            **/.git*/**
+            **/.github/**
+            **/.vscode/**
+            **/node_modules/**
+            **/.cursor/**
+            **/.DS_Store
+            **/Thumbs.db
             .gitignore
             README.md
             scripts/**
-
-      - name: Wait then verify live matches repo (no N2G in HTML)
-        continue-on-error: true
-        run: |
-          set -e
-          URL="https://opticssymposia.iapp.am/registration.html"
-          for i in 1 2 3 4 5 6; do
-            if [ "$i" != 1 ]; then sleep 20; fi
-            echo "Check attempt $i: $URL"
-            curl -fsS --max-time 45 "$URL" -o /tmp/registration.html
-            if ! grep -qE 'N2G|Brains LLC' /tmp/registration.html; then
-              echo "OK: live has no N2G line in served HTML (deploy path is correct)."
-              exit 0
-            fi
-            echo "Still seeing N2G in live HTML (wrong FTP path or cache)."
-          done
-          echo "::warning::LIVE still has N2G in HTML. If deploy logs show success, cPanel may use a different path than $FTP_DEPLOY_DIR — check Domains / File Manager. Or delete the p.footer-credit line in .html on the server once."
-          exit 1
+            iapp-deploy.zip
+            shablon.txt
+            opticssymposia-site.zip

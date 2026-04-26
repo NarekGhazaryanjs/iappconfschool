@@ -14,7 +14,7 @@
 
 2. **Document root-ը** workflow-ի `env.FTP_DEPLOY_DIR` արժեքն ա` **`opticssymposia.iapp.am/`** (նույնը, ինչ` `/home/USER/opticssymposia.iapp.am/`)` secret-ով path չէ ասում։
 
-3. `main` **push** → deploy այդ folder, հետո live ստուգում։ [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions)
+3. **`main` push** կամ **Actions → Run workflow** → **Deploy iappconfschool to cPanel** → FTP `opticssymposia.iapp.am/`։ [Actions](https://github.com/NarekGhazaryanjs/iappconfschool/actions)
 
 4. Եթէ host-ը **ուրիշ արմատ** ա (ոչ` `opticssymposia.iapp.am/`), `FTP_DEPLOY_DIR` արժեքը փոխի `.github/workflows/cicd.yml` `env` բաժնում` մեկ տող։
 
