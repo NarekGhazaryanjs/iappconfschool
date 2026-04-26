@@ -147,13 +147,4 @@
       setNavMenuOpen(false);
     }
   });
-
-  (function removeLegacyN2gFooter() {
-    document.querySelectorAll(".site-footer .footer-credit, p.footer-credit").forEach(function (n) {
-      n.remove();
-    });
-    document.querySelectorAll(".site-footer p").forEach(function (p) {
-      if (p.textContent && /N2G|Brains LLC/i.test(p.textContent)) p.remove();
-    });
-  })();
 })();

@@ -1,5 +1,6 @@
-# CI + CD: https://github.com/NarekGhazaryanjs/iappconfschool
-# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR (e.g. opticssymposia.iapp.am/)
+# Push to main → GitHub Actions → FTP deploy to cPanel. Live = repo when secrets are correct.
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR
+# FTP_TARGET_DIR must be the cPanel *document root* for https://opticssymposia.iapp.am/ (e.g. opticssymposia.iapp.am/ with trailing slash)
 
 name: CI / CD
 
@@ -45,6 +46,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Require all FTP secrets
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
+        run: |
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ] || [ -z "$FTP_TARGET_DIR" ]; then
+            echo "::error::Set all of: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR (Settings → Secrets → Actions)"
+            exit 1
+          fi
+
       - name: Sync to hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -60,3 +73,4 @@ jobs:
             **/.git*
             .gitignore
             README.md
+            scripts/**
