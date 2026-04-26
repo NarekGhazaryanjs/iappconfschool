@@ -52,6 +52,17 @@ def _ts_close(a: datetime, b: datetime) -> bool:
     return abs((a.astimezone(timezone.utc) - b.astimezone(timezone.utc)).total_seconds()) <= 3.0
 
 
+def _ftp_size(ftp: ftplib.FTP, name: str) -> int | None:
+    try:
+        line = ftp.sendcmd(f"SIZE {name}")
+    except Exception:
+        return None
+    m = re.search(r"213\s+(\d+)", line or "")
+    if m:
+        return int(m.group(1))
+    return None
+
+
 def _ftp_mdtm(ftp: ftplib.FTP, name: str) -> datetime | None:
     try:
         line = ftp.sendcmd(f"MDTM {name}")
@@ -101,7 +112,7 @@ _BFS_SKIP_DIRS = frozenset(
     }
 )
 _MAX_BFS_DEPTH = 8
-_MAX_BFS_RETR = 100
+_MAX_BFS_RETR = 200
 _MAX_BFS_QUE = 500
 
 
@@ -114,8 +125,9 @@ def bfs_match_docroot(
     http_last_modified: datetime | None = None,
 ) -> bool:
     """
-    Search FTP for any index.html|htm under login root whose bytes == public.
+    Search FTP: any .html/.htm in tree matching public bytes; also MDTM for index names.
     """
+    target_len = len(public)
     n_retr = 0
     q: deque[tuple[str, ...]] = deque()
     q.append(())
@@ -142,21 +154,31 @@ def bfs_match_docroot(
 
         files_here: list[str] = []
         dirs_here: list[str] = []
+        mlsd_sizes: dict[str, int | None] = {}
+        used_mlsd = False
         try:
             for name, facts in ftp.mlsd():
                 t = facts.get("type", "")
-                if name in ("index.html", "index.htm") and t not in ("dir", "cdir", "pdir"):
+                lname = name.lower()
+                if t == "file" and lname.endswith((".html", ".htm")):
                     files_here.append(name)
+                    szr = facts.get("size")
+                    if str(szr or "").isdigit():
+                        mlsd_sizes[name] = int(str(szr))
+                    else:
+                        mlsd_sizes[name] = None
                 elif t == "dir" and name not in (".", "..") and not name.startswith("."):
                     if name in _BFS_SKIP_DIRS:
                         continue
                     dirs_here.append(name)
+            used_mlsd = True
         except Exception:
             try:
                 for n in sorted(ftp.nlst()):
                     if n in (".", "..", ".htaccess", ".htpasswd") or n.startswith("."):
                         continue
-                    if n in ("index.html", "index.htm"):
+                    nlow = n.lower()
+                    if nlow.endswith((".html", ".htm")):
                         files_here.append(n)
                     else:
                         if n in _BFS_SKIP_DIRS:
@@ -175,6 +197,14 @@ def bfs_match_docroot(
                     pass
                 continue
 
+        seenf: set[str] = set()
+        uniq: list[str] = []
+        for f in files_here:
+            if f not in seenf:
+                seenf.add(f)
+                uniq.append(f)
+        files_here = uniq
+
         for fname in files_here:
             if http_last_modified is not None:
                 t = _ftp_mdtm(ftp, fname)
@@ -191,6 +221,11 @@ def bfs_match_docroot(
                     except Exception:
                         pass
                     return True
+            sz = mlsd_sizes.get(fname) if used_mlsd else None
+            if sz is None:
+                sz = _ftp_size(ftp, fname)
+            if sz is not None and sz != target_len:
+                continue
             if n_retr >= _MAX_BFS_RETR:
                 break
             n_retr += 1
