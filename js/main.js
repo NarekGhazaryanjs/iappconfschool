@@ -1,4 +1,5 @@
 (function () {
+  console.log("wow");
   var lightbox = document.getElementById("image-lightbox");
   var navToggle = document.querySelector(".nav-toggle");
   var siteNav = document.querySelector(".site-nav");
