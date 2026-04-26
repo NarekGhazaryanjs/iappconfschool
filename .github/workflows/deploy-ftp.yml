@@ -1,11 +1,13 @@
-# Push to `main` → files sync to your hosting (FTP/FTPS).
-# Setup: GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
-#   FTP_HOST       — e.g. ftp.yourdomain.am
-#   FTP_USERNAME
+# Push to `main` → deploy to reg.am cPanel, domain root:
+#   /home/iappamfk/opticssymposia.am
+# (spelling: opticssymposia, not "synposia")
+#
+# GitHub: Settings → Secrets → Actions:
+#   FTP_HOST       — usually server2.reg.am or the FTP host from reg.am (see hosting email)
+#   FTP_USERNAME   — cPanel / FTP user (e.g. iappamfk)
 #   FTP_PASSWORD
-# Optional: Settings → Environments (or edit server-dir below if your path is not default).
-# If your control panel already opens you in the site root, server-dir: ./ is fine.
-# For SFTP-only hosts, this action may not apply — use a different action or a VPS with git pull.
+#
+# If FTP after login is already *inside* opticssymposia.am, change server-dir to ./
 
 name: Deploy site (FTP)
 
@@ -25,16 +27,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync to hosting (FTP)
+      - name: Sync to opticssymposia.am
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          # Change if your provider uses e.g. public_html, httpdocs, www
-          server-dir: ./
+          server-dir: opticssymposia.am/
+          security: strict
+          log-level: verbose
           exclude: |
             **/.github/**
             **/.git*
             .gitignore
+          # Note: v4 diff sync does not always remove old server-only folders
+          # (e.g. legacy about/, contact/) — delete them once in File Manager if they remain.
