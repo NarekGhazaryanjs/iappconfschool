@@ -1,7 +1,7 @@
 # CI + CD: https://github.com/NarekGhazaryanjs/iappconfschool
-# CD target: iapp.am → separate subdomain (own doc root), e.g. optics.iapp.am
-#   In cPanel → Domains: create subdomain, UNCHECK "share public_html with iapp.am"
-#   Then set server-dir below to match "Корневая папка" (often public_html/sub/<name>/).
+# CD: FTP to cPanel "document root" for this site (subdomain or addon domain).
+#   Subdomain: e.g. confschool.iapp.am → see README "Ենթադոմեն" — FTP_TARGET_DIR
+#   e.g. public_html/sub/confschool/ or confschool.iapp.am/ (must match Domains + File Manager).
 # Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR
 
 name: CI / CD
@@ -40,7 +40,7 @@ jobs:
           echo "All required site files present."
 
   deploy:
-    name: CD — FTP to opticssymposia (subdomain root)
+    name: CD — FTP to hosting (document root in FTP_TARGET_DIR)
     needs: [ ci ]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -55,9 +55,9 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          # Secret FTP_TARGET_DIR must match Domains list "root" from FTP chroot, e.g.:
-          #   opticssymposia.am/   (cPanel shows document root as /opticssymposia.am)
-          # Trailing / required. Wrong folder name = files deploy to wrong place.
+          # FTP_TARGET_DIR = path from account home (e.g. opticssymposia.am/ or
+          # public_html/sub/NAME/ or NAME.iapp.am/). Trailing / required. Must match
+          # cPanel → Domains → that site's "document root" as seen in File Manager.
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           security: strict
           log-level: verbose
