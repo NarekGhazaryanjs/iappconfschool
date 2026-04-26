@@ -64,3 +64,4 @@ jobs:
             **/.github/**
             **/.git*
             .gitignore
+            README.md
