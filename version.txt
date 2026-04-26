@@ -1,0 +1,1 @@
+iappconfschool-deploy: check this file at https://opticssymposia.iapp.am/version.txt (2026-04-27)

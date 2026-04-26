@@ -35,6 +35,7 @@ jobs:
           test -f js/main.js
           test -f downloads/1st-announcement.pdf
           test -f .htaccess
+          test -f version.txt
           test -f scripts/ftp-read-remote.py
 
       - name: Require FTP secrets
