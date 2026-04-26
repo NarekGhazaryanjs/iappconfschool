@@ -1,5 +1,5 @@
-# Deploy: path is auto-detected (scripts/ftp-probe.py) unless FTP_TARGET_DIR or workflow input overrides.
-# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD. Optional: FTP_TARGET_DIR = relative (e.g. opticssymposia.iapp.am/ or ./).
+# Deploy: default server-dir = cPanel standard subdomain path (see Determine step). Override: secret FTP_TARGET_DIR or workflow_dispatch.
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -35,7 +35,6 @@ jobs:
           test -f js/main.js
           test -f downloads/1st-announcement.pdf
           test -f .htaccess
-          test -f scripts/ftp-probe.py
           test -f scripts/ftp-read-remote.py
 
       - name: Require FTP secrets
@@ -52,13 +51,12 @@ jobs:
       - name: Determine FTP server-dir
         id: p
         env:
-          FTP_HOST: ${{ secrets.FTP_SERVER }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
           T: ${{ secrets.FTP_TARGET_DIR }}
         run: |
           set -e
           OVR='${{ github.event.inputs.ftp_path_override }}'
+          # Same pattern as cPanel: Subdomains create public_html/<subdomain>/
+          DEFAULT="public_html/opticssymposia.iapp.am/"
           rel() {
             local x="$1"
             if echo "$x" | grep -qE '^/home/'; then
@@ -85,8 +83,8 @@ jobs:
             echo "dir=$D" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "Auto-probing FTP path (upload tiny file, check HTTPS)..."
-          python3 scripts/ftp-probe.py
+          echo "Using default: $DEFAULT"
+          echo "dir=$DEFAULT" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -138,7 +136,7 @@ jobs:
             echo "Attempt $i/5: marker not in public index..."
             sleep 8
           done
-          echo "::error::opticssymposia.iapp.am (HTTPS) does not serve the same index as Git. FTP is almost certainly using the wrong folder. In cPanel: Subdomains -> Document root, then set repository secret FTP_TARGET_DIR to that path relative to FTP (e.g. public_html/opticssymposia.iapp.am/)."
+          echo "::error::Public site still not serving this build (wrong FTP folder or cache)."
           exit 1
 
       - name: Verify live HTML (N2G)
