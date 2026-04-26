@@ -1,4 +1,5 @@
-# Default matches cPanel: /home/iappamfk/opticssymposia.iapp.am/ — CPANEL_FTP_DIR_MODE: home | public_html | domains. CPANEL_LINUX_USER if not iappamfk.
+# FTP-Deploy-Action server-dir = path RELATIVE to FTP login dir (cPanel: usually /home/USER), NOT full /home/.../ — or files land in wrong place.
+# Secret FTP_TARGET_DIR may be /home/USER/opticssymposia.iapp.am/ — we strip to opticssymposia.iapp.am/ automatically.
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -46,7 +47,7 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve server-dir
+      - name: Resolve server-dir (relative to FTP home for cPanel)
         id: p
         env:
           T: ${{ secrets.FTP_TARGET_DIR }}
@@ -57,31 +58,35 @@ jobs:
           MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
           if [ -z "$MODE" ]; then MODE="home"; fi
           OVR='${{ github.event.inputs.ftp_path_override }}'
+          # Strip /home/USER/ from absolute paths; FTP-Deploy is relative to login dir.
+          rel() {
+            local x="$1"
+            if echo "$x" | grep -qE '^/home/'; then
+              echo "$x" | sed -E "s#^/home/[^/]+/##"
+            else
+              echo "$x" | sed 's:^/*::'
+            fi
+          }
           if [ -n "$OVR" ]; then
-            D="$OVR"
-            if ! echo "$D" | grep -qE '^/home/'; then
-              D="/home/${U}/$(echo "$D" | sed 's:^/*::')"
-            fi
+            D=$(rel "$OVR")
           elif [ -n "$T" ]; then
-            D="$T"
-            if ! echo "$D" | grep -qE '^/home/'; then
-              D="/home/${U}/$(echo "$D" | sed 's:^/*::')"
-            fi
+            D=$(rel "$T")
           else
             case "$MODE" in
               home)
-                D="/home/${U}/opticssymposia.iapp.am/" ;;
+                D="opticssymposia.iapp.am/" ;;
               public_html)
-                D="/home/${U}/public_html/opticssymposia.iapp.am/" ;;
+                D="public_html/opticssymposia.iapp.am/" ;;
               domains|*)
-                D="/home/${U}/domains/opticssymposia.iapp.am/public_html/" ;;
+                D="domains/opticssymposia.iapp.am/public_html/" ;;
             esac
           fi
+          D=$(rel "$D")
           case "$D" in
             */) ;;
             *) D="${D}/" ;;
           esac
-          echo "server-dir: $D"
+          echo "server-dir (FTP relative): $D"
           echo "dir=$D" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via FTP
