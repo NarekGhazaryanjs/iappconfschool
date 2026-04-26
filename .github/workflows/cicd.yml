@@ -1,6 +1,6 @@
-# server-dir = path relative to WHERE YOUR FTP USER LANDS.
-# Many cPanel FTP users chroot to public_html only — then "opticssymposia.iapp.am/" creates a FAKE folder inside public_html (wrong). Real vhost is sibling: use "../opticssymposia.iapp.am/".
-# Var CPANEL_FTP_CHROOT: public_html (default) | home
+# server-dir = path relative to WHERE YOUR FTP USER STARTS.
+# - Best: cPanel → FTP Accounts → new user, Directory = this subdomain’s folder only → in GitHub set CPANEL_FTP_IS_SUBACCOUNT=true (server-dir ./).
+# - Else: CPANEL_FTP_CHROOT: home (default) | public_html
 name: Deploy iappconfschool to cPanel
 
 on:
@@ -56,8 +56,9 @@ jobs:
           set -e
           U='${{ vars.CPANEL_LINUX_USER }}'
           if [ -z "$U" ]; then U="iappamfk"; fi
+          SUB='${{ vars.CPANEL_FTP_IS_SUBACCOUNT }}'
           CHROOT='${{ vars.CPANEL_FTP_CHROOT }}'
-          if [ -z "$CHROOT" ]; then CHROOT="public_html"; fi
+          if [ -z "$CHROOT" ]; then CHROOT="home"; fi
           MODE='${{ vars.CPANEL_FTP_DIR_MODE }}'
           if [ -z "$MODE" ]; then MODE="home"; fi
           OVR='${{ github.event.inputs.ftp_path_override }}'
@@ -69,7 +70,9 @@ jobs:
               echo "$x" | sed 's:^/*::'
             fi
           }
-          if [ -n "$OVR" ]; then
+          if [ "$SUB" = "true" ] || [ "$SUB" = "1" ] || [ "$SUB" = "yes" ]; then
+            D="./"
+          elif [ -n "$OVR" ]; then
             D=$(rel "$OVR")
           elif [ -n "$T" ]; then
             D=$(rel "$T")
@@ -82,10 +85,13 @@ jobs:
               domains|*)
                 D="domains/opticssymposia.iapp.am/public_html/" ;;
             esac
+            D=$(rel "$D")
           fi
-          D=$(rel "$D")
-          if [ "$CHROOT" = "public_html" ] && ! echo "$D" | grep -q '^\.\./'; then
-            D="../$D"
+          if [ "$SUB" != "true" ] && [ "$SUB" != "1" ] && [ "$SUB" != "yes" ]; then
+            D=$(rel "$D")
+            if [ "$CHROOT" = "public_html" ] && ! echo "$D" | grep -q '^\.\./'; then
+              D="../$D"
+            fi
           fi
           case "$D" in
             */) ;;
@@ -134,7 +140,7 @@ jobs:
             if ! marker "$IDX"; then
               echo "try $i/6: index has no deploy marker (wrong FTP folder or cache)"
               if [ "$i" -eq 6 ]; then
-                echo "::error::FTP still not updating the real site. In repo Settings → Variables set CPANEL_FTP_CHROOT=home (if main cPanel login) or keep public_html. Or set FTP_TARGET_DIR to ../opticssymposia.iapp.am/ manually."
+                echo "::error::FTP is not writing the live document root. Create a cPanel FTP user whose home folder IS ONLY this subdomain, then set repo Variable CPANEL_FTP_IS_SUBACCOUNT=true. Or adjust CPANEL_FTP_CHROOT / FTP_TARGET_DIR."
                 exit 1
               fi
               sleep 25
