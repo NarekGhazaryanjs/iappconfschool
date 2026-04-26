@@ -42,7 +42,8 @@ jobs:
   deploy:
     name: CD — FTP to opticssymposia (subdomain root)
     needs: [ ci ]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on push to main OR manual "Run workflow" (not on pull_request)
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
