@@ -1,0 +1,63 @@
+# CI + CD: https://github.com/NarekGhazaryanjs/iappconfschool
+# - CI: all pushes & PRs to main
+# - CD: FTP deploy only on push to main (after CI passes)
+# Secrets: FTP_HOST, FTP_USERNAME, FTP_PASSWORD
+
+name: CI / CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI — verify static site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          set -e
+          for f in \
+            index.html program.html registration.html \
+            history.html gallery.html invited-speakers.html; do
+            test -f "$f" || { echo "Missing: $f"; exit 1; }
+          done
+          test -f css/style.css
+          test -f css/fonts.css
+          test -f js/main.js
+          test -f downloads/1st-announcement.pdf
+          echo "All required site files present."
+
+  deploy:
+    name: CD — FTP to opticssymposia.am
+    needs: [ ci ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync to hosting
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: opticssymposia.am/
+          security: strict
+          log-level: verbose
+          exclude: |
+            **/.github/**
+            **/.git*
+            .gitignore
