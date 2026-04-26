@@ -6,9 +6,12 @@ Stdlib only. Writes dir= to GITHUB_OUTPUT (relative, trailing /).
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime, timezone
+import email.utils
 import ftplib
 from io import BytesIO
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -41,6 +44,43 @@ def _norm(b: bytes) -> bytes:
     return b.replace(b"\r\n", b"\n")
 
 
+def _ts_close(a: datetime, b: datetime) -> bool:
+    if a.tzinfo is None:
+        a = a.replace(tzinfo=timezone.utc)
+    if b.tzinfo is None:
+        b = b.replace(tzinfo=timezone.utc)
+    return abs((a.astimezone(timezone.utc) - b.astimezone(timezone.utc)).total_seconds()) <= 3.0
+
+
+def _ftp_mdtm(ftp: ftplib.FTP, name: str) -> datetime | None:
+    try:
+        line = ftp.sendcmd(f"MDTM {name}")
+    except Exception:
+        return None
+    m = re.search(
+        r"213\s+(\d{4})(\d{2})(\d{2})(?:(\d{2})(\d{2})(\d{2}))?",
+        line or "",
+    )
+    if not m:
+        return None
+    y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if m.group(4) is not None:
+        h, mi, s = int(m.group(4)), int(m.group(5)), int(m.group(6))
+    else:
+        h, mi, s = 0, 0, 0
+    return datetime(y, mo, d, h, mi, s, tzinfo=timezone.utc)
+
+
+def _http_last_modified_to_dt(lm: str) -> datetime | None:
+    try:
+        t = email.utils.parsedate_to_datetime(lm)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return t.astimezone(timezone.utc)
+
+
 def _parts_to_dir(parts: tuple[str, ...]) -> str:
     if not parts:
         return "./"
@@ -71,6 +111,7 @@ def bfs_match_docroot(
     password: str,
     public: bytes,
     out_path: str,
+    http_last_modified: datetime | None = None,
 ) -> bool:
     """
     Search FTP for any index.html|htm under login root whose bytes == public.
@@ -135,6 +176,21 @@ def bfs_match_docroot(
                 continue
 
         for fname in files_here:
+            if http_last_modified is not None:
+                t = _ftp_mdtm(ftp, fname)
+                if t is not None and _ts_close(t, http_last_modified):
+                    d = _parts_to_dir(parts)
+                    print(
+                        f"::notice::BFS: MDTM+HTTP Last-Modified match {fname} under {d!r} — use this for deploy"
+                    )
+                    if out_path:
+                        with open(out_path, "a", encoding="utf-8") as go:
+                            go.write(f"dir={d}\n")
+                    try:
+                        ftp.close()
+                    except Exception:
+                        pass
+                    return True
             if n_retr >= _MAX_BFS_RETR:
                 break
             n_retr += 1
@@ -176,10 +232,18 @@ def bfs_match_docroot(
     return False
 
 
-def _fetch_public() -> bytes:
-    req = urllib.request.Request(BASE, headers={"User-Agent": "iappconfschool-ci", "Cache-Control": "no-cache"})
+def _fetch_public_and_last_modified() -> tuple[bytes, datetime | None]:
+    req = urllib.request.Request(
+        BASE,
+        headers={"User-Agent": "iappconfschool-ci", "Cache-Control": "no-cache"},
+    )
     with urllib.request.urlopen(req, timeout=30) as r:
-        return r.read()
+        body = r.read()
+        raw_lm = r.headers.get("Last-Modified")
+    if not raw_lm:
+        return _norm(body), None
+    dtlm = _http_last_modified_to_dt(raw_lm)
+    return _norm(body), dtlm
 
 
 def main() -> int:
@@ -189,7 +253,7 @@ def main() -> int:
     out_path = os.environ.get("GITHUB_OUTPUT", "")
 
     try:
-        public = _norm(_fetch_public())
+        public, http_lm = _fetch_public_and_last_modified()
     except urllib.error.URLError as e:
         print(f"::error::Cannot fetch {BASE}: {e!r}", file=sys.stderr)
         return 1
@@ -206,30 +270,54 @@ def main() -> int:
                     ftp.cwd("..")
                 else:
                     ftp.cwd(p)
+            if http_lm is not None:
+                for fname in ("index.html", "index.htm"):
+                    t = _ftp_mdtm(ftp, fname)
+                    if t is not None and _ts_close(t, http_lm):
+                        print(
+                            f"::notice::MDTM matches HTTP Last-Modified at {server_dir!r} ({fname})"
+                        )
+                        if out_path:
+                            with open(out_path, "a", encoding="utf-8") as go:
+                                go.write(f"dir={server_dir}\n")
+                        try:
+                            ftp.close()
+                        except Exception:
+                            pass
+                        return 0
             buf = BytesIO()
             try:
                 ftp.retrbinary("RETR index.html", buf.write, blocksize=65536)
             except Exception:
                 try:
-                    ftp.close()
+                    buf = BytesIO()
+                    ftp.retrbinary("RETR index.htm", buf.write, blocksize=65536)
                 except Exception:
-                    pass
-                continue
+                    try:
+                        ftp.close()
+                    except Exception:
+                        pass
+                    continue
             raw = buf.getvalue()
-            ftp.close()
+            try:
+                ftp.close()
+            except Exception:
+                pass
         except Exception as e:
             print(f"try {server_dir!r}: {e!r}", file=sys.stderr)
             continue
 
         if _norm(raw) == public:
-            print(f"::notice::Live index matches FTP path: {server_dir!r} — this is the real document root for deploy")
+            print(
+                f"::notice::Live index (bytes) matches FTP path: {server_dir!r} — this is the real document root for deploy"
+            )
             if out_path:
                 with open(out_path, "a", encoding="utf-8") as go:
                     go.write(f"dir={server_dir}\n")
             return 0
 
     print("::warning::No fixed candidate matched; BFS the FTP account for index.html …", file=sys.stderr)
-    if bfs_match_docroot(host, user, password, public, out_path):
+    if bfs_match_docroot(host, user, password, public, out_path, http_lm):
         return 0
     print(
         "::error::No index.html on this FTP (searched) matches the public home page. "
