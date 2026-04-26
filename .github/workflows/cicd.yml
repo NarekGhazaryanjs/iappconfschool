@@ -31,6 +31,17 @@ jobs:
           test -f downloads/1st-announcement.pdf
           test -f .htaccess
 
+      - name: Require FTP secrets (copy from iapp repo if missing)
+        env:
+          A: ${{ secrets.FTP_SERVER }}
+          B: ${{ secrets.FTP_USERNAME }}
+          C: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          if [ -z "$A" ] || [ -z "$B" ] || [ -z "$C" ]; then
+            echo "::error::Add FTP_SERVER, FTP_USERNAME, FTP_PASSWORD to this repository (Settings → Secrets). They are per-repo — same values as the iapp project."
+            exit 1
+          fi
+
       - name: Resolve server-dir
         id: p
         env:
