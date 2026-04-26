@@ -2,7 +2,7 @@
 # CD target: iapp.am → separate subdomain (own doc root), e.g. optics.iapp.am
 #   In cPanel → Domains: create subdomain, UNCHECK "share public_html with iapp.am"
 #   Then set server-dir below to match "Корневая папка" (often public_html/sub/<name>/).
-# Secrets: FTP_HOST, FTP_USERNAME, FTP_PASSWORD
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_TARGET_DIR
 
 name: CI / CD
 
@@ -52,12 +52,12 @@ jobs:
       - name: Sync to hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_HOST }}
+          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          # cPanel: /home/iappamfk/opticssymposia (FTP chroot to home)
-          server-dir: opticssymposia/
+          # cPanel path; set secret FTP_TARGET_DIR to e.g. opticssymposia/ (trailing / required)
+          server-dir: ${{ secrets.FTP_TARGET_DIR }}
           security: strict
           log-level: verbose
           exclude: |

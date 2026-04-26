@@ -20,9 +20,10 @@ GitHub → **Settings → Secrets and variables → Actions**․
 
 | Secret | |
 |--------|--|
-| `FTP_HOST` | reg.am / cPanel FTP host (օր. `server2.reg.am`) |
+| `FTP_SERVER` | FTP host (օր. `server2.reg.am`) — **անունը ճիշտ այսպես** |
 | `FTP_USERNAME` | FTP user |
 | `FTP_PASSWORD` | FTP password |
+| `FTP_TARGET_DIR` | հոսթի path, օր. `opticssymposia/` (վերջնով `/`) |
 
 `server-dir` path-ը `.github/workflows/cicd.yml` ֆայլում ա, եթि cPanel-ում path-ը փոխեիր — ասա, թարմացնենք։
 
