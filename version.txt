@@ -1,1 +1,1 @@
-iappconfschool-deploy: check this file at https://opticssymposia.iapp.am/version.txt (2026-04-27)
+iappconfschool-deploy v11 unified nav/CSS cache bust (2026-04-30)
